@@ -306,6 +306,7 @@ export type Database = {
           city: string
           created_at: string
           elevation: number
+          home_layout: string
           id: string
           latitude: number
           longitude: number
@@ -322,6 +323,7 @@ export type Database = {
           city?: string
           created_at?: string
           elevation?: number
+          home_layout?: string
           id?: string
           latitude?: number
           longitude?: number
@@ -338,6 +340,7 @@ export type Database = {
           city?: string
           created_at?: string
           elevation?: number
+          home_layout?: string
           id?: string
           latitude?: number
           longitude?: number

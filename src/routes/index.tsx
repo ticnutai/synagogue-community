@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { CalendarDays, ChevronLeft, Sunrise, Sunset } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -8,8 +8,19 @@ import { AnnouncementCard } from "@/components/AnnouncementCard";
 import { useAnnouncements, useMinyanim, useSettings } from "@/lib/data";
 import { DAY_TYPE_LABEL, dayTypeFor, resolveDay, zmanimFor, type DayType } from "@/lib/minyan-time";
 import { formatTime, ZMAN_LABELS, type SolarEvent } from "@/lib/zmanim";
+import { QuickAddButton } from "@/components/QuickAddButton";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
+  validateSearch: (search: Record<string, unknown>) => {
+    const layout =
+      import.meta.env.DEV &&
+      typeof search.layout === "string" &&
+      LAYOUTS.includes(search.layout as HomeLayout)
+        ? (search.layout as HomeLayout)
+        : undefined;
+    return { layout };
+  },
   head: () => ({
     meta: [
       { title: "זמני תפילות — בית הכנסת אושר של יהודי, בני ברק" },
@@ -42,6 +53,9 @@ const SHOWN_ZMANIM: SolarEvent[] = [
   "tzeit",
 ];
 
+const LAYOUTS = ["classic", "cards", "urgent-first"] as const;
+export type HomeLayout = (typeof LAYOUTS)[number];
+
 function HomePage() {
   const { data: settings } = useSettings();
   const { data: minyanim = [], isLoading } = useMinyanim();
@@ -50,6 +64,8 @@ function HomePage() {
   const today = useMemo(() => new Date(), []);
   const [dayType, setDayType] = useState<DayType>(() => dayTypeFor(new Date()));
   const [prayer, setPrayer] = useState("shacharit");
+
+  const layout = (settings?.home_layout as HomeLayout) ?? "classic";
 
   const zmanim = useMemo(() => zmanimFor(today, settings), [today, settings]);
   const rows = useMemo(
@@ -68,132 +84,217 @@ function HomePage() {
 
   const topAnnouncements = announcements.slice(0, 3);
 
+  const prayerTimes = (
+    <PrayerTimes
+      rows={rows}
+      isLoading={isLoading}
+      dayType={dayType}
+      setDayType={setDayType}
+      prayer={prayer}
+      prayerTabs={prayerTabs}
+      setPrayer={setPrayer}
+    />
+  );
+  const zmanimGrid = <ZmanimGrid zmanim={zmanim} />;
+  const announcementsSection = topAnnouncements.length > 0 && (
+    <AnnouncementsSection topAnnouncements={topAnnouncements} />
+  );
+
   return (
     <div className="min-h-screen">
       <SiteHeader />
 
-      <section className="hero-surface">
-        <div className="mx-auto max-w-5xl px-4 py-14 text-center sm:py-16">
-          <p className="text-sm text-gold sm:text-base">
-            {settings?.subtitle || "קהילה, תורה ותפילה"}
-          </p>
-          <h1 className="mt-3 text-4xl font-bold text-primary-foreground sm:text-5xl">
-            {settings?.name ?? "בית הכנסת"}
-          </h1>
-          <div className="gold-rule mx-auto mt-4 h-px w-40" />
-          <p className="mt-4 flex items-center justify-center gap-2 text-sm opacity-90">
-            <CalendarDays className="size-4" />
-            {dateLabel}
-          </p>
-          <div className="mt-6 flex items-center justify-center gap-6 text-sm">
-            <span className="flex items-center gap-2">
-              <Sunrise className="size-4" /> נץ {formatTime(zmanim.sunrise)}
-            </span>
-            <span className="flex items-center gap-2">
-              <Sunset className="size-4" /> שקיעה {formatTime(zmanim.sunset)}
-            </span>
-          </div>
-        </div>
-      </section>
+      <HeroSection settings={settings} dateLabel={dateLabel} zmanim={zmanim} compact={layout !== "classic"} />
 
       <main className="mx-auto max-w-5xl px-4 py-10 text-right sm:py-12">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-2xl font-semibold">זמני התפילות</h2>
-          <div className="flex gap-1 rounded-lg bg-muted p-1">
-            {(["weekday", "friday"] as DayType[]).map((d) => (
-              <button
-                key={d}
-                onClick={() => {
-                  setDayType(d);
-                  if (d === "friday") setPrayer("shacharit");
-                }}
-                className={
-                  "rounded-md px-3 py-1.5 text-sm transition-colors " +
-                  (dayType === d
-                    ? "bg-card font-medium text-foreground shadow-soft"
-                    : "text-muted-foreground hover:text-foreground")
-                }
-              >
-                {DAY_TYPE_LABEL[d]}
-              </button>
-            ))}
+        {layout === "classic" && (
+          <div className="space-y-12">
+            {prayerTimes}
+            {zmanimGrid}
+            {announcementsSection}
           </div>
-        </div>
-
-        <div className="mt-3 flex gap-1 rounded-lg bg-secondary p-1" aria-label="סוג תפילה">
-          {prayerTabs.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setPrayer(item.id)}
-              className={
-                "flex-1 rounded-md px-3 py-2 text-sm transition-colors " +
-                (prayer === item.id
-                  ? "bg-primary font-medium text-primary-foreground shadow-soft"
-                  : "text-muted-foreground hover:text-foreground")
-              }
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="card-elev mt-4 divide-y divide-border overflow-hidden">
-          {isLoading && <p className="p-6 text-center text-muted-foreground">טוען…</p>}
-          {!isLoading && rows.length === 0 && (
-            <p className="p-6 text-center text-muted-foreground">
-              עדיין לא הוגדרו מניינים ליום זה.
-            </p>
-          )}
-          {rows.map(({ minyan, time, source }) => (
-            <div key={minyan.id} className="flex items-center gap-4 px-4 py-3.5">
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{minyan.label}</p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {source}
-                  {minyan.room ? ` · ${minyan.room}` : ""}
-                  {minyan.note ? ` · ${minyan.note}` : ""}
-                </p>
-              </div>
-              <span className="font-display text-2xl font-semibold tabular-nums text-primary">
-                {time}
-              </span>
+        )}
+        {layout === "cards" && (
+          <div className="space-y-10">
+            <div className="grid gap-6 lg:grid-cols-2">
+              <div className="space-y-3">{prayerTimes}</div>
+              <div className="space-y-3">{zmanimGrid}</div>
             </div>
-          ))}
-        </div>
-
-        <h2 className="mt-12 text-2xl font-semibold">זמני היום</h2>
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {SHOWN_ZMANIM.map((z) => (
-            <div key={z} className="card-elev px-4 py-3">
-              <p className="text-xs text-muted-foreground">{ZMAN_LABELS[z]}</p>
-              <p className="font-display text-xl font-semibold tabular-nums">
-                {formatTime(zmanim[z])}
-              </p>
-            </div>
-          ))}
-        </div>
-
-        {topAnnouncements.length > 0 && (
-          <>
-            <div className="mt-12 flex items-center justify-between">
-              <h2 className="text-2xl font-semibold">מודעות לציבור</h2>
-              <Button asChild variant="ghost" size="sm">
-                <Link to="/announcements">
-                  כל המודעות <ChevronLeft className="size-4" />
-                </Link>
-              </Button>
-            </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {topAnnouncements.map((a) => (
-                <AnnouncementCard key={a.id} announcement={a} />
-              ))}
-            </div>
-          </>
+            {announcementsSection}
+          </div>
+        )}
+        {layout === "urgent-first" && (
+          <div className="space-y-12">
+            {announcementsSection}
+            {prayerTimes}
+            {zmanimGrid}
+          </div>
         )}
       </main>
 
+      <QuickAddButton />
       <SiteFooter />
     </div>
+  );
+}
+
+function HeroSection({
+  settings,
+  dateLabel,
+  zmanim,
+  compact,
+}: {
+  settings: ReturnType<typeof useSettings>["data"];
+  dateLabel: string;
+  zmanim: ReturnType<typeof zmanimFor>;
+  compact: boolean;
+}) {
+  return (
+    <section className="hero-surface">
+      <div
+        className={cn(
+          "mx-auto max-w-5xl px-4 text-center",
+          compact ? "py-8 sm:py-10" : "py-14 sm:py-16",
+        )}
+      >
+        <p className="text-sm text-gold sm:text-base">{settings?.subtitle || "קהילה, תורה ותפילה"}</p>
+        <h1 className={cn("mt-3 font-bold", compact ? "text-3xl sm:text-4xl" : "text-4xl sm:text-5xl")}>
+          {settings?.name ?? "בית הכנסת"}
+        </h1>
+        <div className="gold-rule mx-auto mt-4 h-px w-40" />
+        <p className="mt-4 flex items-center justify-center gap-2 text-sm opacity-90">
+          <CalendarDays className="size-4" />
+          {dateLabel}
+        </p>
+        <div className="mt-6 flex items-center justify-center gap-6 text-sm">
+          <span className="flex items-center gap-2">
+            <Sunrise className="size-4" /> נץ {formatTime(zmanim.sunrise)}
+          </span>
+          <span className="flex items-center gap-2">
+            <Sunset className="size-4" /> שקיעה {formatTime(zmanim.sunset)}
+          </span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PrayerTimes({
+  rows,
+  isLoading,
+  dayType,
+  setDayType,
+  prayer,
+  prayerTabs,
+  setPrayer,
+}: {
+  rows: ReturnType<typeof resolveDay>;
+  isLoading: boolean;
+  dayType: DayType;
+  setDayType: (d: DayType) => void;
+  prayer: string;
+  prayerTabs: readonly { id: string; label: string }[];
+  setPrayer: (p: string) => void;
+}) {
+  return (
+    <section>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-2xl font-semibold">זמני התפילות</h2>
+        <div className="flex gap-1 rounded-lg bg-muted p-1">
+          {(["weekday", "friday"] as DayType[]).map((d) => (
+            <button
+              key={d}
+              onClick={() => {
+                setDayType(d);
+                if (d === "friday") setPrayer("shacharit");
+              }}
+              className={cn(
+                "rounded-md px-3 py-1.5 text-sm transition-colors",
+                dayType === d
+                  ? "bg-card font-medium text-foreground shadow-soft"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {DAY_TYPE_LABEL[d]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-3 flex gap-1 rounded-lg bg-secondary p-1" aria-label="סוג תפילה">
+        {prayerTabs.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => setPrayer(item.id)}
+            className={cn(
+              "flex-1 rounded-md px-3 py-2 text-sm transition-colors",
+              prayer === item.id
+                ? "bg-primary font-medium text-primary-foreground shadow-soft"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="card-elev mt-4 divide-y divide-border overflow-hidden">
+        {isLoading && <p className="p-6 text-center text-muted-foreground">טוען…</p>}
+        {!isLoading && rows.length === 0 && (
+          <p className="p-6 text-center text-muted-foreground">עדיין לא הוגדרו מניינים ליום זה.</p>
+        )}
+        {rows.map(({ minyan, time, source }) => (
+          <div key={minyan.id} className="flex items-center gap-4 px-4 py-3.5">
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-medium">{minyan.label}</p>
+              <p className="truncate text-xs text-muted-foreground">
+                {source}
+                {minyan.room ? ` · ${minyan.room}` : ""}
+                {minyan.note ? ` · ${minyan.note}` : ""}
+              </p>
+            </div>
+            <span className="font-display text-2xl font-semibold tabular-nums text-primary">{time}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ZmanimGrid({ zmanim }: { zmanim: ReturnType<typeof zmanimFor> }) {
+  return (
+    <section>
+      <h2 className="text-2xl font-semibold">זמני היום</h2>
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {SHOWN_ZMANIM.map((z) => (
+          <div key={z} className="card-elev px-4 py-3">
+            <p className="text-xs text-muted-foreground">{ZMAN_LABELS[z]}</p>
+            <p className="font-display text-xl font-semibold tabular-nums">{formatTime(zmanim[z])}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function AnnouncementsSection({ topAnnouncements }: { topAnnouncements: Array<NonNullable<ReturnType<typeof useAnnouncements>["data"]>[number]> }) {
+  if (!topAnnouncements || topAnnouncements.length === 0) return null;
+  return (
+    <section>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-semibold">מודעות לציבור</h2>
+        <Button asChild variant="ghost" size="sm">
+          <Link to="/announcements">
+            כל המודעות <ChevronLeft className="size-4" />
+          </Link>
+        </Button>
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        {topAnnouncements.map((a) => (
+          <AnnouncementCard key={a.id} announcement={a} />
+        ))}
+      </div>
+    </section>
   );
 }
 

@@ -1,0 +1,1 @@
+ALTER TABLE public.settings ADD COLUMN home_layout text NOT NULL DEFAULT 'classic';

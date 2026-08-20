@@ -13,6 +13,7 @@ import { ChavrutaRequestsAdmin } from "@/components/admin/ChavrutaRequestsAdmin"
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/use-auth";
 import { useAdminMessages } from "@/lib/data";
+import { QuickAddButton } from "@/components/QuickAddButton";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -110,7 +111,9 @@ function AdminPage() {
             </TabsContent>
           </Tabs>
         )}
+        <QuickAddButton />
       </main>
     </div>
   );
 }
+
