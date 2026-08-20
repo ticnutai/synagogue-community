@@ -59,7 +59,7 @@ const adminPassword =
   readWindowsUserEnv("MIGRATION_ADMIN_PASSWORD");
 
 function requireConfig() {
-  if (projectRef !== "bfiayuuhjtyccqobsjvl")
+  if (projectRef !== "gicsknanyctuxjfxvmqo")
     throw new Error(`Refusing unexpected project: ${projectRef || "missing"}`);
   if (!supabaseUrl || !anonKey) throw new Error("Supabase project settings are missing");
   if (!adminEmail || !adminPassword)

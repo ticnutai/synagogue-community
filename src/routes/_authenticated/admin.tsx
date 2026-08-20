@@ -10,6 +10,7 @@ import { MessagesAdmin } from "@/components/admin/MessagesAdmin";
 import { SettingsAdmin } from "@/components/admin/SettingsAdmin";
 import { UsersAdmin } from "@/components/admin/UsersAdmin";
 import { ChavrutaRequestsAdmin } from "@/components/admin/ChavrutaRequestsAdmin";
+import { DataExportImportAdmin } from "@/components/admin/DataExportImportAdmin";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/use-auth";
 import { useAdminMessages } from "@/lib/data";
@@ -83,6 +84,7 @@ function AdminPage() {
               <TabsTrigger value="messages">הודעות{unread > 0 ? ` (${unread})` : ""}</TabsTrigger>
               <TabsTrigger value="settings">הגדרות</TabsTrigger>
               <TabsTrigger value="users">משתמשים</TabsTrigger>
+              <TabsTrigger value="data">ייצוא/ייבוא</TabsTrigger>
             </TabsList>
 
             <TabsContent value="minyanim" className="mt-6">
@@ -108,6 +110,9 @@ function AdminPage() {
             </TabsContent>
             <TabsContent value="users" className="mt-6">
               <UsersAdmin />
+            </TabsContent>
+            <TabsContent value="data" className="mt-6">
+              <DataExportImportAdmin />
             </TabsContent>
           </Tabs>
         )}
