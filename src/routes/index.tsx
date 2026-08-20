@@ -184,7 +184,7 @@ function PrayerTimes({
   dayType: DayType;
   setDayType: (d: DayType) => void;
   prayer: string;
-  prayerTabs: { id: string; label: string }[];
+  prayerTabs: readonly { id: string; label: string }[];
   setPrayer: (p: string) => void;
 }) {
   return (
