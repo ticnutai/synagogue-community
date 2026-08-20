@@ -12,6 +12,15 @@ import { QuickAddButton } from "@/components/QuickAddButton";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
+  validateSearch: (search: Record<string, unknown>) => {
+    const layout =
+      import.meta.env.DEV &&
+      typeof search.layout === "string" &&
+      LAYOUTS.includes(search.layout as HomeLayout)
+        ? (search.layout as HomeLayout)
+        : undefined;
+    return { layout };
+  },
   head: () => ({
     meta: [
       { title: "זמני תפילות — בית הכנסת אושר של יהודי, בני ברק" },
