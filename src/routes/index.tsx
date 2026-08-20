@@ -268,8 +268,8 @@ function ZmanimGrid({ zmanim }: { zmanim: ReturnType<typeof zmanimFor> }) {
   );
 }
 
-function AnnouncementsSection({ topAnnouncements }: { topAnnouncements: ReturnType<typeof useAnnouncements>["data"] }) {
-  return (
+function AnnouncementsSection({ topAnnouncements }: { topAnnouncements: Array<NonNullable<ReturnType<typeof useAnnouncements>["data"]>[number]> }) {
+  if (!topAnnouncements || topAnnouncements.length === 0) return null;
     <section>
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-semibold">מודעות לציבור</h2>
