@@ -111,7 +111,9 @@ function AdminPage() {
             </TabsContent>
           </Tabs>
         )}
+        <QuickAddButton />
       </main>
     </div>
   );
 }
+
